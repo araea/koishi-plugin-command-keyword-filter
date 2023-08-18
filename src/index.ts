@@ -26,7 +26,10 @@ export const Config: Schema<Config> = Schema.object({
   isMentioned: Schema.boolean().default(false).description('适用于用户无指令直接提及或引用机器人触发机器人响应的情况。例如：davinci-003、rr-su-chat')
 })
 
+
+
 // 定义一个 Map 类型的容器，用来存储 session.userId 和触发的时间
+
 const container = new Map<string, number>();
 
 export function apply(ctx: Context, config: Config) {
@@ -46,9 +49,9 @@ export function apply(ctx: Context, config: Config) {
 
   if (isMentioned) {
     ctx.on('message', async (session) => {
-      if (session.parsed.appel || session.quote.userId === session.bot.selfId) {
+      if (session.parsed.appel || session.quote?.userId === session.bot.selfId) {
         // 调用 checkArgs 函数，判断 args 是否包含 keywords
-        const result = checkContent(session.content, keywords);
+        const result = checkArgs(session.content.split(' '), keywords);
         // 获取当前时间戳，单位为毫秒
         const now = Date.now();
 
@@ -57,15 +60,18 @@ export function apply(ctx: Context, config: Config) {
           // 获取之前存储的时间戳
           const prev = container.get(session.userId);
           // 计算时间差值，单位为秒
-          const diff = calculateTimeDifference(now, prev);
+          const diff = (now - prev) / 1000;
 
-          // 如果时间差值小于 time
+          // 如果时间差值小于 timeLimit
           if (diff < timeLimit) {
             if (action === '仅封印无提示') {
               return '';
             }
             await session.send(bannedMessage.replace('《剩余时间》', `${Math.floor(timeLimit - diff)}`));
-            return
+            return;
+          } else {
+            // 如果时间差值大于 timeLimit，则从容器中删除该用户的记录
+            container.delete(session.userId);
           }
         }
 
@@ -73,27 +79,23 @@ export function apply(ctx: Context, config: Config) {
         if (result) {
           if (action === '仅提示') {
             await session.send(reminderMessage);
-            return
+            return;
           }
 
-          // 如果容器中没有 session.userId 的记录，或者时间差值大于等于 time
-          // 将 session.userId 和当前时间戳存入容器中
           container.set(session.userId, now);
 
-          // if (action === '仅封印无提示') {
-          //   return '';
-          // }
-
           await session.send(triggerMessage);
-          return
+          return;
         }
       }
-    })
+    });
   }
-
 
   // 监听 command/before-execute 事件
   ctx.on('command/before-execute', async (argv) => {
+    if (argv.session.parsed.appel || argv.session.quote?.userId === argv.session.bot.selfId) {
+      return ''
+    }
     // 调用 checkArgs 函数，判断 args 是否包含 keywords
     const result = checkArgs(argv.args, keywords);
     // 获取当前时间戳，单位为毫秒
@@ -104,14 +106,17 @@ export function apply(ctx: Context, config: Config) {
       // 获取之前存储的时间戳
       const prev = container.get(argv.session.userId);
       // 计算时间差值，单位为秒
-      const diff = calculateTimeDifference(now, prev);
+      const diff = (now - prev) / 1000;
 
-      // 如果时间差值小于 time
+      // 如果时间差值小于 timeLimit
       if (diff < timeLimit) {
         if (action === '仅封印无提示') {
           return '';
         }
         return bannedMessage.replace('《剩余时间》', `${Math.floor(timeLimit - diff)}`);
+      } else {
+        // 如果时间差值大于 timeLimit，则从容器中删除该用户的记录
+        container.delete(argv.session.userId);
       }
     }
 
@@ -121,56 +126,21 @@ export function apply(ctx: Context, config: Config) {
         return reminderMessage;
       }
 
-      // 如果容器中没有 session.userId 的记录，或者时间差值大于等于 time
-      // 将 session.userId 和当前时间戳存入容器中
       container.set(argv.session.userId, now);
-
-      // if (action === '仅封印无提示') {
-      //   return '';
-      // }
 
       return triggerMessage;
     }
   });
-
 }
 
 // 定义一个函数，用来检查 args 是否包含 keywords
-function checkArgs(args: any[], keywords: string[]): boolean {
+function checkArgs(args: string[], keywords: string[]): boolean {
   // 使用 some 方法，检查 args 数组是否有至少一个元素满足条件
   return args.some((arg) => {
-    // 使用 some 方法，检查 keywords 数组是否有至少一个元素包含在 arg 中
-    return keywords.some((keyword) => {
-      // 判断 arg 是否是字符串类型
-      if (typeof arg === 'string') {
-        // 使用 includes 方法，检查 arg 是否包含 keyword
-        return arg.includes(keyword);
-      } else {
-        // 如果不是字符串类型，可以转换为字符串或者直接返回 false
-        // return String(arg).includes(keyword); // 转换为字符串
-        return false; // 直接返回 false
-      }
-    });
-  });
-}
-
-// 定义一个函数，用来检查 args 是否包含 keywords
-function checkContent(content: string, keywords: string[]): boolean {
-  // 将 args 拆分为字符串数组，使用空格作为分隔符
-  const argArray: string[] = content.split(' ');
-
-  // 使用 some 方法，检查 argArray 数组是否有至少一个元素满足条件
-  return argArray.some((arg) => {
     // 使用 some 方法，检查 keywords 数组是否有至少一个元素包含在 arg 中
     return keywords.some((keyword) => {
       // 使用 includes 方法，检查 arg 是否包含 keyword
       return arg.includes(keyword);
     });
   });
-}
-
-
-// 定义一个函数，用来计算时间差值（单位：秒）
-function calculateTimeDifference(current: number, previous: number): number {
-  return Math.floor((current - previous) / 1000);
 }
