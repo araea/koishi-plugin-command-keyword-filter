@@ -16,7 +16,7 @@ export interface Config {
 }
 
 export const Config: Schema<Config> = Schema.object({
-  keywords: Schema.array(String).role('table').description('过滤关键词'),
+  keywords: Schema.array(String).role('table').description('过滤关键词，支持多个关键词，请点击右边的 `添加行` 按钮添加'),
   action: Schema.union(['仅封印无提示', '仅提示', '既封印又提示']).default('既封印又提示').description('触发关键词后做的动作'),
   timeLimit: Schema.number().default(60).description('触发关键词后屏蔽的时间（秒）'),
   triggerMessage: Schema.string().role('textarea', { rows: [1, 4] }).default('你一点都不可爱喵~ 从现在开始我要讨厌你一会儿啦~ 略略略~').description('触发关键词后的提示信息'),
