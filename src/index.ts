@@ -1,7 +1,7 @@
 import { Context, Schema } from 'koishi'
 
 export const name = 'command-keyword-filter'
-export const usage = `## ❗️ 注意事项
+export const usage = `## ⚠️ 注意事项
 
 - ❗️ 本插件只能过滤用户输入的命令参数（args）。
 - ❗️ 本插件只能过滤文本类型的参数。`
@@ -37,9 +37,9 @@ export function apply(ctx: Context, config: Config) {
     reminderMessage,
   } = config;
 
-  ctx.command('t').action(async ({ session }) => {
-    await session.send('6');
-  });
+  // ctx.command('t').action(async ({ session }) => {
+  //   await session.send('6');
+  // });
 
   // 监听 command/before-execute 事件
   ctx.on('command/before-execute', async (argv) => {
