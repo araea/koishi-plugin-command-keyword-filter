@@ -49,19 +49,19 @@ export function apply(ctx: Context, config: Config) {
 
   if (isMentioned) {
     ctx.middleware(async (session, next) => {
-      if (session.parsed?.appel || session.quote?.userId === session.bot.selfId) {
+      if (session.parsed?.appel || session.quote?.userId === session.bot.selfId || containsAtIdString(session.content, session.bot.selfId)) {
         // 调用 checkArgs 函数，判断 args 是否包含 keywords
         const result = checkArgs(session.content.split(' '), keywords);
         // 获取当前时间戳，单位为毫秒
         const now = Date.now();
-  
+
         // 如果容器中已经有了 session.userId 的记录
         if (container.has(session.userId)) {
           // 获取之前存储的时间戳
           const prev = container.get(session.userId);
           // 计算时间差值，单位为秒
           const diff = (now - prev) / 1000;
-  
+
           // 如果时间差值小于 timeLimit
           if (diff < timeLimit) {
             if (action === '仅封印无提示') {
@@ -74,16 +74,16 @@ export function apply(ctx: Context, config: Config) {
             container.delete(session.userId);
           }
         }
-  
+
         // 如果结果为 true
         if (result) {
           if (action === '仅提示') {
             await session.send(reminderMessage);
             return;
           }
-  
+
           container.set(session.userId, now);
-  
+
           await session.send(triggerMessage);
           return;
         }
@@ -93,7 +93,7 @@ export function apply(ctx: Context, config: Config) {
   }
 
   // ctx.on('message', async (session) => {
- 
+
   // });
 
 
@@ -144,4 +144,9 @@ export function apply(ctx: Context, config: Config) {
 
 function checkArgs(args: string[], keywords: string[]): boolean {
   return args.some((arg) => typeof arg === 'string' && keywords.some((keyword) => arg.includes(keyword)));
+}
+
+function containsAtIdString(input: string, selfId: string): boolean {
+  const searchString = `<at id="${selfId}"/>`;
+  return input.includes(searchString);
 }
