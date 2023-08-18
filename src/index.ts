@@ -83,16 +83,24 @@ export function apply(ctx: Context, config: Config) {
   });
 
   // 定义一个函数，用来检查 args 是否包含 keywords
-  function checkArgs(args: string[], keywords: string[]): boolean {
+  function checkArgs(args: any[], keywords: string[]): boolean {
     // 使用 some 方法，检查 args 数组是否有至少一个元素满足条件
     return args.some((arg) => {
       // 使用 some 方法，检查 keywords 数组是否有至少一个元素包含在 arg 中
       return keywords.some((keyword) => {
-        // 使用 includes 方法，检查 arg 是否包含 keyword
-        return arg.includes(keyword);
+        // 判断 arg 是否是字符串类型
+        if (typeof arg === 'string') {
+          // 使用 includes 方法，检查 arg 是否包含 keyword
+          return arg.includes(keyword);
+        } else {
+          // 如果不是字符串类型，可以转换为字符串或者直接返回 false
+          // return String(arg).includes(keyword); // 转换为字符串
+          return false; // 直接返回 false
+        }
       });
     });
   }
+
 
 
 
