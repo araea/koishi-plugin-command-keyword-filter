@@ -1,4 +1,4 @@
-import { Context, Schema } from 'koishi'
+import { Context, Schema, capitalize } from 'koishi'
 
 export const name = 'command-keyword-filter'
 export const usage = `## ⚠️ 注意事项
@@ -49,7 +49,7 @@ export function apply(ctx: Context, config: Config) {
 
   if (isMentioned) {
     ctx.on('message', async (session) => {
-      if (session.parsed.appel || session.quote?.userId === session.bot.selfId) {
+      if (session.parsed?.appel || session.quote?.userId === session.bot.selfId) {
         // 调用 checkArgs 函数，判断 args 是否包含 keywords
         const result = checkArgs(session.content.split(' '), keywords);
         // 获取当前时间戳，单位为毫秒
@@ -93,9 +93,12 @@ export function apply(ctx: Context, config: Config) {
 
   // 监听 command/before-execute 事件
   ctx.on('command/before-execute', async (argv) => {
-    if (argv.session.parsed.appel || argv.session.quote?.userId === argv.session.bot.selfId) {
-      return ''
+    if (isMentioned) {
+      if (argv.session.parsed?.appel || argv.session.quote?.userId === argv.session.bot.selfId) {
+        return ''
+      }
     }
+
     // 调用 checkArgs 函数，判断 args 是否包含 keywords
     const result = checkArgs(argv.args, keywords);
     // 获取当前时间戳，单位为毫秒
