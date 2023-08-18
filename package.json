@@ -1,6 +1,6 @@
 {
   "name": "koishi-plugin-command-keyword-filter",
-  "description": "",
+  "description": "用于过滤用户在触发指令之前传递的参数，以确定是否包含预设的关键词。它能够让你的机器人有选择性地执行指令。🤖",
   "version": "0.0.1",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -9,11 +9,27 @@
     "dist"
   ],
   "license": "MIT",
+  "author": "Nawyjx <3373167460@qq.com>",
+  "homepage": "https://www.npmjs.com/package/koishi-plugin-command-keyword-filter?activeTab=readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/araea/koishi-plugin-command-keyword-filter.git"
+  },
+
   "scripts": {},
   "keywords": [
     "chatbot",
     "koishi",
-    "plugin"
+    "plugin",
+    "command",
+    "filter",
+    "keyword",
+    "keywords",
+    "关键词",
+    "过滤",
+    "指令过滤",
+    "命令过滤",
+    "关键词过滤"
   ],
   "peerDependencies": {
     "koishi": "^4.14.1"
