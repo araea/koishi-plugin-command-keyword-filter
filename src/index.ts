@@ -48,20 +48,20 @@ export function apply(ctx: Context, config: Config) {
   // });
 
   if (isMentioned) {
-    ctx.on('message', async (session) => {
+    ctx.middleware(async (session, next) => {
       if (session.parsed?.appel || session.quote?.userId === session.bot.selfId) {
         // 调用 checkArgs 函数，判断 args 是否包含 keywords
         const result = checkArgs(session.content.split(' '), keywords);
         // 获取当前时间戳，单位为毫秒
         const now = Date.now();
-
+  
         // 如果容器中已经有了 session.userId 的记录
         if (container.has(session.userId)) {
           // 获取之前存储的时间戳
           const prev = container.get(session.userId);
           // 计算时间差值，单位为秒
           const diff = (now - prev) / 1000;
-
+  
           // 如果时间差值小于 timeLimit
           if (diff < timeLimit) {
             if (action === '仅封印无提示') {
@@ -74,22 +74,28 @@ export function apply(ctx: Context, config: Config) {
             container.delete(session.userId);
           }
         }
-
+  
         // 如果结果为 true
         if (result) {
           if (action === '仅提示') {
             await session.send(reminderMessage);
             return;
           }
-
+  
           container.set(session.userId, now);
-
+  
           await session.send(triggerMessage);
           return;
         }
       }
-    });
+      return next();
+    }, true /* true 表示这是前置中间件 */)
   }
+
+  // ctx.on('message', async (session) => {
+ 
+  // });
+
 
   // 监听 command/before-execute 事件
   ctx.on('command/before-execute', async (argv) => {
@@ -136,14 +142,6 @@ export function apply(ctx: Context, config: Config) {
   });
 }
 
-// 定义一个函数，用来检查 args 是否包含 keywords
 function checkArgs(args: string[], keywords: string[]): boolean {
-  // 使用 some 方法，检查 args 数组是否有至少一个元素满足条件
-  return args.some((arg) => {
-    // 使用 some 方法，检查 keywords 数组是否有至少一个元素包含在 arg 中
-    return keywords.some((keyword) => {
-      // 使用 includes 方法，检查 arg 是否包含 keyword
-      return arg.includes(keyword);
-    });
-  });
+  return args.some((arg) => typeof arg === 'string' && keywords.some((keyword) => arg.includes(keyword)));
 }
