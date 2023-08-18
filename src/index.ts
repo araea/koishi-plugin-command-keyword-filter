@@ -3,8 +3,8 @@ import { Context, Schema } from 'koishi'
 export const name = 'command-keyword-filter'
 export const usage = `## ⚠️ 注意事项
 
-- ❗️ 本插件只能过滤用户输入的命令参数（args）。
-- ❗️ 本插件只能过滤文本类型的参数。`
+- 本插件只能过滤用户输入的命令参数（args）。
+- 本插件只能过滤文本类型的参数。`
 
 export interface Config {
   keywords: string[]; // 关键词
@@ -18,7 +18,7 @@ export interface Config {
 export const Config: Schema<Config> = Schema.object({
   keywords: Schema.array(String).role('table').description('过滤关键词'),
   action: Schema.union(['仅封印无提示', '仅提示', '既封印又提示']).default('既封印又提示').description('触发关键词后做的动作'),
-  timeLimit: Schema.number().default(60).description('触发时间限制（秒）'),
+  timeLimit: Schema.number().default(60).description('触发关键词后屏蔽的时间（秒）'),
   triggerMessage: Schema.string().role('textarea', { rows: [1, 4] }).default('你一点都不可爱喵~ 从现在开始我要讨厌你一会儿啦~ 略略略~').description('触发关键词后的提示信息'),
   bannedMessage: Schema.string().role('textarea', { rows: [1, 4] }).default('哼~ 我还在生气呢~ 叫你惹我生气！凶你喵~！《剩余时间》 秒后再来找我玩吧~').description('被屏蔽后的提示信息（文本中的《剩余时间》将会被替换成实际剩余时间的秒数）'),
   reminderMessage: Schema.string().role('textarea', { rows: [1, 4] }).default('我警告你喵~ 别再惹我生气啦~ 否则的话，我会生气的！（拿起小拳头对你挥了挥喵~）').description('触发关键词的提示信息（仅提示不屏蔽）'),
