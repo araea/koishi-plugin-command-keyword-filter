@@ -47,61 +47,69 @@ export function apply(ctx: Context, config: Config) {
   //   await session.send('6');
   // });
 
-  if (isMentioned) {
-    ctx.middleware(async (session, next) => {
-      if (session.parsed?.appel || session.quote?.userId === session.bot.selfId || containsAtIdString(session.content, session.bot.selfId)) {
-        // 调用 checkArgs 函数，判断 args 是否包含 keywords
-        const result = checkArgs(session.content.split(' '), keywords);
-        // 获取当前时间戳，单位为毫秒
-        const now = Date.now();
+  // // 如果收到“天王盖地虎”，就回应“宝塔镇河妖”
+  // ctx.middleware((session, next) => {
+  //   if (session.content.includes('天王盖地虎')) {
+  //     return '宝塔镇河妖'
+  //   } else {
+  //     // 如果去掉这一行，那么不满足上述条件的消息就不会进入下一个中间件了
+  //     return next()
+  //   }
+  // })
+  
+  ctx.middleware(async (session, next) => {
+    if (!isMentioned) {
+      return next()
+    }
+    if (session.parsed?.appel || session.quote?.userId === capitalize(session.bot.selfId) || containsAtIdString(session.content, session.bot.selfId, session.bot.username)) {
+      // if (session.parsed?.appel || session.quote?.userId === session.bot.selfId || containsAtIdString(session.content, session.bot.selfId)) {
+      // 调用 checkArgs 函数，判断 args 是否包含 keywords
+      const result = checkArgs(session.content.split(' '), keywords);
+      // 获取当前时间戳，单位为毫秒
+      const now = Date.now();
+      // 如果容器中已经有了 session.userId 的记录
+      if (container.has(session.userId)) {
+        // 获取之前存储的时间戳
+        const prev = container.get(session.userId);
+        // 计算时间差值，单位为秒
+        const diff = (now - prev) / 1000;
 
-        // 如果容器中已经有了 session.userId 的记录
-        if (container.has(session.userId)) {
-          // 获取之前存储的时间戳
-          const prev = container.get(session.userId);
-          // 计算时间差值，单位为秒
-          const diff = (now - prev) / 1000;
-
-          // 如果时间差值小于 timeLimit
-          if (diff < timeLimit) {
-            if (action === '仅封印无提示') {
-              return '';
-            }
-            await session.send(bannedMessage.replace('《剩余时间》', `${Math.floor(timeLimit - diff)}`));
-            return;
-          } else {
-            // 如果时间差值大于 timeLimit，则从容器中删除该用户的记录
-            container.delete(session.userId);
+        // 如果时间差值小于 timeLimit
+        if (diff < timeLimit) {
+          if (action === '仅封印无提示') {
+            return '';
           }
-        }
-
-        // 如果结果为 true
-        if (result) {
-          if (action === '仅提示') {
-            await session.send(reminderMessage);
-            return;
-          }
-
-          container.set(session.userId, now);
-
-          await session.send(triggerMessage);
-          return;
+          return bannedMessage.replace('《剩余时间》', `${Math.floor(timeLimit - diff)}`);
+        } else {
+          // 如果时间差值大于 timeLimit，则从容器中删除该用户的记录
+          container.delete(session.userId);
         }
       }
-      return next();
-    }, true /* true 表示这是前置中间件 */)
-  }
+      // 如果结果为 true
+      if (result) {
+        if (action === '仅提示') {
+          return reminderMessage;
+        }
+
+        container.set(session.userId, now);
+
+        return triggerMessage;
+        ;
+      }
+    }
+    return next();
+  }, true /* true 表示这是前置中间件 */)
+
 
   // ctx.on('message', async (session) => {
 
   // });
 
-
   // 监听 command/before-execute 事件
   ctx.on('command/before-execute', async (argv) => {
     if (isMentioned) {
-      if (argv.session.parsed?.appel || argv.session.quote?.userId === argv.session.bot.selfId) {
-        return ''
+      if (argv.session.parsed?.appel || argv.session.quote?.userId === capitalize(argv.session.bot.selfId) || containsAtIdString(argv.session.content, argv.session.bot.selfId, argv.session.bot.username)) {
+        return
       }
     }
 
@@ -146,7 +154,7 @@ function checkArgs(args: string[], keywords: string[]): boolean {
   return args.some((arg) => typeof arg === 'string' && keywords.some((keyword) => arg.includes(keyword)));
 }
 
-function containsAtIdString(input: string, selfId: string): boolean {
-  const searchString = `<at id="${selfId}"/>`;
+function containsAtIdString(input: string, selfId: string, selfName: string): boolean {
+  const searchString = `<at id="${selfId}" name="${selfName}"/>`;
   return input.includes(searchString);
 }
