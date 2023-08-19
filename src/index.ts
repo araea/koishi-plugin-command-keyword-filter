@@ -154,7 +154,7 @@ function checkArgs(args: string[], keywords: string[]): boolean {
   return args.some((arg) => typeof arg === 'string' && keywords.some((keyword) => arg.includes(keyword)));
 }
 
-function containsAtIdString(input: string, selfId: string, selfName: string): boolean {
-  const searchString = `<at id="${selfId}" name="${selfName}"/>`;
-  return input.includes(searchString);
+const containsAtIdString = (input: string, selfId: string, selfName: string): boolean => {
+  const regex = new RegExp(`<at id="${selfId}" name="${selfName}"/>|\\[CQ:at,qq=${selfId}\\]`);
+  return regex.test(input);
 }
