@@ -4,15 +4,22 @@ export const name = 'command-keyword-filter'
 export const usage = `## ⚠️ 注意事项
 
 - 本插件只能过滤用户输入的命令参数（args）。
-- 本插件只能过滤文本类型的参数。`
+- 本插件只能过滤文本类型的参数。
+
+## 📝 命令
+
+\`你不乖哦 <arg:user> [customTimeLimit:number]\`：手动屏蔽不乖的小朋友喵~（默认未设置权限等级，需要自己设置哦~）。
+    - \`arg\`：必选参数，@某个成员。
+    - \`customTimeLimit\`：可选参数，单位是秒。若未输入该参数，默认为配置项中 timeLimit 的值。`
 
 export interface Config {
   keywords: string[]; // 关键词
   action: any; // 触发关键词后做的动作
-  timeLimit: number; // 触发时间限制（秒）
+  timeLimit: number; // 触发关键词后屏蔽的时间（秒）
   triggerMessage: string; // 触发关键词后的提示信息
   bannedMessage: string; // 被屏蔽后的提示信息
   reminderMessage: string; // 触发关键词的提示信息（仅提示不屏蔽）
+  naughtyMemberMessage: string; // 手动屏蔽不乖的成员的提示信息
   isMentioned: boolean
 }
 
@@ -23,6 +30,7 @@ export const Config: Schema<Config> = Schema.object({
   triggerMessage: Schema.string().role('textarea', { rows: [1, 4] }).default('你一点都不可爱喵~ 从现在开始我要讨厌你一会儿啦~ 略略略~').description('触发关键词后的提示信息'),
   bannedMessage: Schema.string().role('textarea', { rows: [1, 4] }).default('哼~ 我还在生气呢~ 叫你惹我生气！凶你喵~！《剩余时间》 秒后再来找我玩吧~').description('被屏蔽后的提示信息（文本中的《剩余时间》将会被替换成实际剩余时间的秒数）'),
   reminderMessage: Schema.string().role('textarea', { rows: [1, 4] }).default('我警告你喵~ 别再惹我生气啦~ 否则的话，我会生气的！（拿起小拳头对你挥了挥喵~）').description('触发关键词的提示信息（仅提示不屏蔽）'),
+  naughtyMemberMessage: Schema.string().role('textarea', { rows: [1, 4] }).default('我才不要和不乖的小朋友玩呢~ 哼哼喵~（叉腰）我要讨厌你一会儿啦~ 啦啦啦~').description('手动屏蔽不乖的成员的提示信息'),
   isMentioned: Schema.boolean().default(false).description('适用于用户无指令直接提及或引用机器人触发机器人响应的情况。例如：davinci-003、rr-su-chat')
 })
 
@@ -40,6 +48,7 @@ export function apply(ctx: Context, config: Config) {
     triggerMessage,
     bannedMessage,
     reminderMessage,
+    naughtyMemberMessage,
     isMentioned,
   } = config;
 
@@ -57,7 +66,27 @@ export function apply(ctx: Context, config: Config) {
   //     return next()
   //   }
   // })
-  
+
+  ctx.command("你不乖哦 <arg:user> [customTimeLimit:number]", "手动屏蔽不乖的小朋友")
+    .action(async ({ session }, user, customTimeLimit: number = 0) => {
+      if (!user) {
+        return;
+      }
+      ctx.user
+      const userId = user.split(":")[1];
+      // 获取当前时间戳，单位为毫秒
+      const now = Date.now();
+      if (customTimeLimit <= 0) {
+        container.set(userId, now);
+      }
+      if (customTimeLimit) {
+        // 在这里处理手动屏蔽用户自定义的时长
+        container.set(userId, now + customTimeLimit * 1000 - timeLimit * 1000); // 将用户自定义的时长转换为毫秒并设置到容器中
+      }
+      await session.send(naughtyMemberMessage)
+    });
+
+
   ctx.middleware(async (session, next) => {
     if (!isMentioned) {
       return next()
