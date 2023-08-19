@@ -47,8 +47,9 @@ export function apply(ctx: Context, config: Config) {
   //   await session.send('6');
   // });
 
-  // // 如果收到“天王盖地虎”，就回应“宝塔镇河妖”
+  // 如果收到“天王盖地虎”，就回应“宝塔镇河妖”
   // ctx.middleware((session, next) => {
+  //   console.log(session.content)
   //   if (session.content.includes('天王盖地虎')) {
   //     return '宝塔镇河妖'
   //   } else {
@@ -155,6 +156,6 @@ function checkArgs(args: string[], keywords: string[]): boolean {
 }
 
 const containsAtIdString = (input: string, selfId: string, selfName: string): boolean => {
-  const regex = new RegExp(`<at id="${selfId}" name="${selfName}"/>|\\[CQ:at,qq=${selfId}\\]`);
+  const regex = new RegExp(`<at id="${selfId}" name="${selfName}"/>|<at id="${selfId}"/>`);
   return regex.test(input);
 }
