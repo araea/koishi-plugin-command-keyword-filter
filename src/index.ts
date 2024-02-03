@@ -54,6 +54,10 @@ export function apply(ctx: Context, config: Config) {
     isMentioned,
   } = config;
 
+  ctx.command('commandKeywordFilter', "指令关键词过滤帮助")
+    .action(async ({session}) => {
+      await session.execute(`commandKeywordFilter -h`)
+    })
   ctx.command('commandKeywordFilter.你不乖哦 <arg:user> [customTimeLimit:number]', "屏蔽不乖的小朋友")
     .action(async ({session}, user, customTimeLimit: number = 0) => {
       if (!user) {
