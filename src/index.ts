@@ -53,8 +53,8 @@ export const Config: Schema<Config> = Schema.intersect([
   Schema.union([
     Schema.object({
       mysteriousFeatureToggle: Schema.const(true).required(),
-      listUid: Schema.string().description('列表 UID。'),
-      apiToken: Schema.string().description('API Token。'),
+      listUid: Schema.string().default('').description('列表 UID。'),
+      apiToken: Schema.string().default('').description('API Token。'),
       shouldSendRequestOnUserJoinEvent: Schema.boolean().default(true).description('是否开启监听用户进群事件发送请求的功能。'),
       shouldSendRequestOnUserLeaveEvent: Schema.boolean().default(true).description('是否开启监听用户退群事件发送请求的功能。'),
       isKeywordRequestEnabled: Schema.boolean().default(true).description('是否开启当用户触发关键词发送请求的功能。'),
@@ -160,7 +160,7 @@ export function apply(ctx: Context, config: Config) {
         }
       }
       if (result) {
-        if (config.mysteriousFeatureToggle && config.isKeywordRequestEnabled) {
+        if (config.mysteriousFeatureToggle && config.isKeywordRequestEnabled && config.listUid !== '' && config.apiToken !== '') {
           await processPostRequest(session)
         }
         if (action === '仅提示') {
@@ -177,19 +177,19 @@ export function apply(ctx: Context, config: Config) {
 
   // jtq* jt*
   ctx.on('message', async (session) => {
-    if (config.mysteriousFeatureToggle && config.shouldSendRequestOnUserSpeech) {
+    if (config.mysteriousFeatureToggle && config.shouldSendRequestOnUserSpeech && config.listUid !== '' && config.apiToken !== '') {
       await processPostRequest(session)
     }
   })
 
   ctx.on('guild-member-added', async (session) => {
-    if (config.mysteriousFeatureToggle && config.shouldSendRequestOnUserJoinEvent) {
+    if (config.mysteriousFeatureToggle && config.shouldSendRequestOnUserJoinEvent && config.listUid !== '' && config.apiToken !== '') {
       await processPostRequest(session)
     }
   })
 
   ctx.on('guild-member-removed', async (session) => {
-    if (config.mysteriousFeatureToggle && config.shouldSendRequestOnUserLeaveEvent) {
+    if (config.mysteriousFeatureToggle && config.shouldSendRequestOnUserLeaveEvent && config.listUid !== '' && config.apiToken !== '') {
       await processPostRequest(session)
     }
   })
@@ -220,7 +220,7 @@ export function apply(ctx: Context, config: Config) {
     }
 
     if (result) {
-      if (config.mysteriousFeatureToggle && config.isKeywordRequestEnabled) {
+      if (config.mysteriousFeatureToggle && config.isKeywordRequestEnabled && config.listUid !== '' && config.apiToken !== '') {
         await processPostRequest(argv.session)
       }
       if (action === '仅提示') {
