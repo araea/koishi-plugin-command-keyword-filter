@@ -1,6 +1,8 @@
 import {Context, Schema, capitalize, h, sleep} from 'koishi'
 import {} from 'koishi-plugin-markdown-to-image-service'
 import {} from 'koishi-plugin-adapter-onebot'
+import path from "node:path";
+import * as fs from "fs";
 
 export const name = 'command-keyword-filter'
 export const inject = {
@@ -41,6 +43,7 @@ export interface Config {
   // 神秘功能2
   mysteriousFeatureToggle2: boolean;
   messagesToBeSent: string[];
+  dailyScheduledTimers: string[];
   messageInterval: number;
   imageConversionEnabled: boolean;
   imageType: 'png' | 'jpeg' | 'webp';
@@ -94,13 +97,14 @@ export const Config: Schema<Config> = Schema.intersect([
       pushMessagesToAllFriendsEnabled: Schema.boolean().default(false).description('是否启用向所有好友推送消息功能。'),
       pushMessagesToAllGroupsEnabled: Schema.boolean().default(false).description('是否启用向所有群组推送消息功能。'),
       sendToBothFriendAndGroupSimultaneously: Schema.boolean().default(false).description('是否同时向好友和群组发送消息（在同时开启为好友和群组发送消息时），关闭后，将会先发送给好友，再发送给群组。'),
-      messagesToBeSent: Schema.array(String).role('table').description('要发送的消息列表，由于该配置项输入的文本无法直接换行，请使用 \\n 作为换行符，例如 你\\n好。'),
+      messagesToBeSent: Schema.array(String).role('table').description('要发送的消息列表，由于该配置项输入的文本无法直接换行，请使用 \\n 作为换行符，例如 你\\n好。发送图片请使用《发送图片xxxx》，这里的 xxxx 可以是文件路径（绝对路径），也可以是图片 URL。举例：你\\n好\\n《发送图片C:\\Pictures\\Nawyjx.jpg》'),
+      dailyScheduledTimers: Schema.array(String).role('table').description('每日定时发送消息的时间列表，例如 08:00、18:45。'),
       messageInterval: Schema.number().default(10).description('消息发送间隔（秒）。'),
       skipMessageRecipients: Schema.array(String).role('table').description('要跳过的消息接收者列表，即白名单。'),
       imageConversionEnabled: Schema.boolean().default(false).description('是否启用将消息转换成图片的功能，如需启用，需要启用 \`markdownToImage\` 服务。'),
       imageType: Schema.union(['png', 'jpeg', 'webp']).default('jpeg').description(`发送的图片类型。`),
       mergeForwardedChatHistoryEnabled: Schema.boolean().default(false).description('是否启用合并转发聊天记录功能（可能无效）。'),
-    logMessageSendingSuccessStatusEnabled: Schema.boolean().default(false).description('是否启用消息发送成功状态的记录功能。'),
+      logMessageSendingSuccessStatusEnabled: Schema.boolean().default(true).description('是否启用消息发送成功状态的记录功能。'),
       logMessageSendingFailStatusEnabled: Schema.boolean().default(true).description('是否启用消息发送失败状态的记录功能（可能无效）。'),
       retractDelay: Schema.number().min(0).default(0).description(`自动撤回等待的时间，单位是秒。值为 0 时不启用自动撤回功能（请注意 QQ 的两分钟撤回限制）。`),
     }),
@@ -127,6 +131,14 @@ export interface CommandKeywordFilter {
 export async function apply(ctx: Context, config: Config) {
   //cl*
   const logger = ctx.logger('commandKeywordFilter');
+  const timers: NodeJS.Timeout[] = [];
+
+  ctx.on('dispose', () => {
+    timers.forEach((timer) => {
+      clearTimeout(timer);
+    });
+  })
+
   const {
     keywords,
     action,
@@ -276,6 +288,24 @@ export async function apply(ctx: Context, config: Config) {
   });
 
   // hs*
+  function replaceImageSource(message: string): string {
+    const regex = /《发送图片(.*?)》/;
+    const match = message.match(regex);
+
+    if (match && match[1]) {
+      const imageUrl = match[1];
+      if (imageUrl.startsWith('http')) {
+        return message.replace(regex, `${h.image(imageUrl)}`);
+      } else {
+        const imgBuffer = fs.readFileSync(imageUrl)
+        return message.replace(regex, `${h.image(imgBuffer, `image/${config.imageType}`)}`);
+      }
+
+    }
+
+    return message;
+  }
+
   function modifyMessage(message: string): string {
     const lines = message.split('\n');
     const modifiedMessage = lines
@@ -458,6 +488,28 @@ export async function apply(ctx: Context, config: Config) {
   }
 
   async function sendMessageToFriendsAndGroups() {
+    config.dailyScheduledTimers.forEach((time) => {
+      const [hours, minutes] = time.split(':').map(Number);
+
+      const now = new Date();
+      const scheduledTime = new Date(now);
+      scheduledTime.setHours(hours, minutes, 0, 0);
+
+      if (scheduledTime <= now) {
+        scheduledTime.setDate(scheduledTime.getDate() + 1);
+      }
+
+      const timeDiff = scheduledTime.getTime() - now.getTime();
+
+      const timer = setTimeout(() => {
+        sendMessageToFriendsAndGroups();
+      }, timeDiff);
+
+      timers.push(timer);
+
+      if (config.logMessageSendingSuccessStatusEnabled) logger.success(`已设置每日定时发送消息时间：${time}`);
+    });
+
     if (config.sendToBothFriendAndGroupSimultaneously) {
       await Promise.all([
         sendMessageToFriends(),
@@ -476,15 +528,17 @@ export async function apply(ctx: Context, config: Config) {
         const friends = friendList.data;
         for (let i = 0; i < friends.length; i++) {
           if (config.skipMessageRecipients.includes(friends[i].id)) continue;
-          const message = replaceNewline(config.messagesToBeSent);
+          const message = replaceImageSource(replaceNewline(config.messagesToBeSent));
           try {
             await sendPrivateMessage(bot, friends[i].id, message);
-            if (config.logMessageSendingSuccessStatusEnabled) logger.success(`成功将消息发送给好友：${friends[i].name}: ${friends[i].id}`);
+            if (config.logMessageSendingSuccessStatusEnabled) logger.success(`${bot.user.name}: ${bot.selfId} 成功将消息发送给好友：${friends[i].name}: ${friends[i].id}`);
           } catch (e) {
-            if (config.logMessageSendingFailStatusEnabled) logger.error(`向好友发送消息失败：${friends[i].name}: ${friends[i].id}`);
+            if (config.logMessageSendingFailStatusEnabled) logger.error(`${bot.user.name}: ${bot.selfId} 向好友发送消息失败：${friends[i].name}: ${friends[i].id}\n${e}`);
           }
           await sleep(config.messageInterval * 1000);
         }
+
+        if (config.logMessageSendingSuccessStatusEnabled) logger.success(`${bot.user.name}: ${bot.selfId} 好友消息发送完成！`);
       }
     }
 
@@ -497,17 +551,20 @@ export async function apply(ctx: Context, config: Config) {
         const groups = groupList.data;
 
         for (let i = 0; i < groups.length; i++) {
+
           if (config.skipMessageRecipients.includes(groups[i].id)) continue;
-          const message = replaceNewline(config.messagesToBeSent);
+          const message = replaceImageSource(replaceNewline(config.messagesToBeSent));
           try {
             await sendGroupMessage(bot, groups[i].id, message);
-            if (config.logMessageSendingSuccessStatusEnabled) logger.success(`成功将消息发送给群组：${groups[i].name}: ${groups[i].id}`);
+            if (config.logMessageSendingSuccessStatusEnabled) logger.success(`${bot.user.name}: ${bot.selfId} 成功将消息发送给群组：${groups[i].name}: ${groups[i].id}`);
           } catch (e) {
-            if (config.logMessageSendingFailStatusEnabled) logger.error(`向群组发送消息失败：${groups[i].name}: ${groups[i].id}`);
+            if (config.logMessageSendingFailStatusEnabled) logger.error(`${bot.user.name}: ${bot.selfId} 向群组发送消息失败：${groups[i].name}: ${groups[i].id}\n${e}`);
           }
           await sleep(config.messageInterval * 1000);
 
         }
+
+        if (config.logMessageSendingSuccessStatusEnabled) logger.success(`${bot.user.name}: ${bot.selfId} 群组消息发送完成！`);
       }
     }
   }
