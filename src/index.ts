@@ -289,21 +289,15 @@ export async function apply(ctx: Context, config: Config) {
 
   // hs*
   function replaceImageSource(message: string): string {
-    const regex = /《发送图片(.*?)》/;
-    const match = message.match(regex);
-
-    if (match && match[1]) {
-      const imageUrl = match[1];
+    const regex = /《发送图片(.*?)》/g;
+    return message.replace(regex, (match, imageUrl) => {
       if (imageUrl.startsWith('http')) {
-        return message.replace(regex, `${h.image(imageUrl)}`);
+        return h.image(imageUrl);
       } else {
-        const imgBuffer = fs.readFileSync(imageUrl)
-        return message.replace(regex, `${h.image(imgBuffer, `image/${config.imageType}`)}`);
+        const imgBuffer = fs.readFileSync(imageUrl);
+        return h.image(imgBuffer, `image/${config.imageType}`);
       }
-
-    }
-
-    return message;
+    });
   }
 
   function modifyMessage(message: string): string {
