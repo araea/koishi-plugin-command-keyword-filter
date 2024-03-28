@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-command-keyword-filter",
   "description": "用于过滤用户在触发指令之前传递的参数，以确定是否包含预设的关键词。它能够让你的机器人有选择性地执行指令。🤖",
-  "version": "1.2.8",
+  "version": "1.2.9",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -31,5 +31,9 @@
   ],
   "peerDependencies": {
     "koishi": "^4.17.3"
+  },
+  "devDependencies": {
+    "koishi-plugin-adapter-onebot": "^6.5.0",
+    "koishi-plugin-markdown-to-image-service": "^1.1.8"
   }
 }
