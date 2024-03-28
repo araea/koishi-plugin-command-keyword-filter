@@ -292,10 +292,10 @@ export async function apply(ctx: Context, config: Config) {
     const regex = /《发送图片(.*?)》/g;
     return message.replace(regex, (match, imageUrl) => {
       if (imageUrl.startsWith('http')) {
-        return h.image(imageUrl);
+        return h.image(imageUrl).toString();
       } else {
         const imgBuffer = fs.readFileSync(imageUrl);
-        return h.image(imgBuffer, `image/${config.imageType}`);
+        return h.image(imgBuffer, `image/${config.imageType}`).toString();
       }
     });
   }
