@@ -8,7 +8,8 @@ import * as fs from "fs";
 
 export const name = 'command-keyword-filter'
 export const inject = {
-  optional: ['markdownToImage', 'notifier'],
+  require: ['notifier'],
+  optional: ['markdownToImage'],
 }
 export const usage = `
 ## 📝 命令
@@ -132,28 +133,26 @@ export interface CommandKeywordFilter {
 
 export async function apply(ctx: Context, config: Config) {
   // an*
-  if (config.mysteriousFeatureToggle2 && config.messagesToBeSent.length !== 0) {
-    const notifier = ctx.notifier.create();
-    const notify = () => notifier.update(<>
+  const notifier = ctx.notifier.create();
+  const notify = () => notifier.update(<>
+    <p>
+      <button onClick={sendNow}>立即发送</button>
+    </p>
+  </>)
+  const sendNow = async () => {
+    notifier.update({type: 'success', content: '正在发送中...'})
+    await sendMessageToFriendsAndGroups()
+    notifier.update({type: 'success', content: '发送成功！'})
+    await sleep(3000)
+    notifier.update({type: 'primary'})
+    notifier.update(<>
       <p>
         <button onClick={sendNow}>立即发送</button>
       </p>
     </>)
-    const sendNow = async () => {
-      notifier.update({type: 'success', content: '正在发送中...'})
-      await sendMessageToFriendsAndGroups()
-      notifier.update({type: 'success', content: '发送成功！'})
-      await sleep(3000)
-      notifier.update({type:'primary'})
-      notifier.update(<>
-        <p>
-          <button onClick={sendNow}>立即发送</button>
-        </p>
-      </>)
-    }
-
-    notify()
   }
+
+  notify()
 
   //cl*
   const logger = ctx.logger('commandKeywordFilter');
