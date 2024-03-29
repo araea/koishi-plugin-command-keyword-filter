@@ -8,7 +8,7 @@ import * as fs from "fs";
 
 export const name = 'command-keyword-filter'
 export const inject = {
-  require: ['notifier'],
+  required: ['notifier'],
   optional: ['markdownToImage'],
 }
 export const usage = `
