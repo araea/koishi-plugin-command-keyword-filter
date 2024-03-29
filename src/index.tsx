@@ -2,12 +2,13 @@ import {Context, Schema, capitalize, h, sleep} from 'koishi'
 import {} from 'koishi-plugin-markdown-to-image-service'
 import {} from 'koishi-plugin-adapter-onebot'
 import {} from '@koishijs/plugin-help'
+import {} from '@koishijs/plugin-notifier'
 import path from "node:path";
 import * as fs from "fs";
 
 export const name = 'command-keyword-filter'
 export const inject = {
-  optional: ['markdownToImage'],
+  optional: ['markdownToImage', 'notifier'],
 }
 export const usage = `
 ## 📝 命令
@@ -130,13 +131,63 @@ export interface CommandKeywordFilter {
 }
 
 export async function apply(ctx: Context, config: Config) {
+  // an*
+  if (config.mysteriousFeatureToggle2 && config.messagesToBeSent.length !== 0) {
+    const notifier = ctx.notifier.create();
+    const notify = () => notifier.update(<>
+      <p>
+        <button onClick={sendNow}>立即发送</button>
+      </p>
+    </>)
+    const sendNow = async () => {
+      notifier.update({type: 'success', content: '正在发送中...'})
+      await sendMessageToFriendsAndGroups()
+      notifier.update({type: 'success', content: '发送成功！'})
+      await sleep(3000)
+      notifier.update({type:'primary'})
+      notifier.update(<>
+        <p>
+          <button onClick={sendNow}>立即发送</button>
+        </p>
+      </>)
+    }
+
+    notify()
+  }
+
   //cl*
   const logger = ctx.logger('commandKeywordFilter');
   const timers: NodeJS.Timeout[] = [];
 
+  if (config.dailyScheduledTimers && config.dailyScheduledTimers.length !== 0) {
+    config.dailyScheduledTimers.forEach((time) => {
+      const [hours, minutes] = time.split(':').map(Number);
+
+      const now = new Date();
+      const scheduledTime = new Date(now);
+      scheduledTime.setHours(hours, minutes, 0, 0);
+
+      if (scheduledTime <= now) {
+        scheduledTime.setDate(scheduledTime.getDate() + 1);
+      }
+
+      const timeDiff = scheduledTime.getTime() - now.getTime();
+
+      const timer = setTimeout(() => {
+        sendMessageToFriendsAndGroups();
+      }, timeDiff);
+
+      timers.push(timer);
+
+      if (config.logMessageSendingSuccessStatusEnabled) logger.success(`已设置每日定时发送消息时间：${time}`);
+    });
+  }
+
+  // qxfzy*
   ctx.on('dispose', () => {
     timers.forEach((timer) => {
       clearTimeout(timer);
+      ctx.scope.dispose();
     });
   })
 
@@ -166,12 +217,6 @@ export async function apply(ctx: Context, config: Config) {
   ctx.command('commandKeywordFilter', "指令关键词过滤帮助")
     .action(async ({session}) => {
       await session.execute(`commandKeywordFilter -h`)
-    })
-  // qd*
-  ctx.command('启动神秘功能2', "启动神秘功能2", {hidden: true})
-    .action(async ({session}) => {
-      // ts* tsxx*
-      await sendMessageToFriendsAndGroups();
     })
   // pb*
   ctx.command('commandKeywordFilter.你不乖哦 <arg:user> [customTimeLimit:number]', "屏蔽不乖的小朋友")
@@ -489,28 +534,6 @@ export async function apply(ctx: Context, config: Config) {
   }
 
   async function sendMessageToFriendsAndGroups() {
-    config.dailyScheduledTimers.forEach((time) => {
-      const [hours, minutes] = time.split(':').map(Number);
-
-      const now = new Date();
-      const scheduledTime = new Date(now);
-      scheduledTime.setHours(hours, minutes, 0, 0);
-
-      if (scheduledTime <= now) {
-        scheduledTime.setDate(scheduledTime.getDate() + 1);
-      }
-
-      const timeDiff = scheduledTime.getTime() - now.getTime();
-
-      const timer = setTimeout(() => {
-        sendMessageToFriendsAndGroups();
-      }, timeDiff);
-
-      timers.push(timer);
-
-      if (config.logMessageSendingSuccessStatusEnabled) logger.success(`已设置每日定时发送消息时间：${time}`);
-    });
-
     if (config.sendToBothFriendAndGroupSimultaneously) {
       await Promise.all([
         sendMessageToFriends(),
