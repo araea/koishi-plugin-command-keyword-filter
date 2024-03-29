@@ -1,6 +1,7 @@
 import {Context, Schema, capitalize, h, sleep} from 'koishi'
 import {} from 'koishi-plugin-markdown-to-image-service'
 import {} from 'koishi-plugin-adapter-onebot'
+import {} from '@koishijs/plugin-help'
 import path from "node:path";
 import * as fs from "fs";
 
@@ -165,6 +166,12 @@ export async function apply(ctx: Context, config: Config) {
   ctx.command('commandKeywordFilter', "指令关键词过滤帮助")
     .action(async ({session}) => {
       await session.execute(`commandKeywordFilter -h`)
+    })
+  // qd*
+  ctx.command('启动神秘功能2', "启动神秘功能2", {hidden: true})
+    .action(async ({session}) => {
+      // ts* tsxx*
+      await sendMessageToFriendsAndGroups();
     })
   // pb*
   ctx.command('commandKeywordFilter.你不乖哦 <arg:user> [customTimeLimit:number]', "屏蔽不乖的小朋友")
@@ -562,7 +569,4 @@ export async function apply(ctx: Context, config: Config) {
       }
     }
   }
-
-  // ts* tsxx*
-  await sendMessageToFriendsAndGroups();
 }
