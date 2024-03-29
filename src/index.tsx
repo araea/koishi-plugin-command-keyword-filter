@@ -134,11 +134,6 @@ export interface CommandKeywordFilter {
 export async function apply(ctx: Context, config: Config) {
   // an*
   const notifier = ctx.notifier.create();
-  const notify = () => notifier.update(<>
-    <p>
-      <button onClick={sendNow}>立即发送</button>
-    </p>
-  </>)
   const sendNow = async () => {
     notifier.update({type: 'success', content: '正在发送中...'})
     await sendMessageToFriendsAndGroups()
@@ -151,8 +146,6 @@ export async function apply(ctx: Context, config: Config) {
       </p>
     </>)
   }
-
-  notify()
 
   //cl*
   const logger = ctx.logger('commandKeywordFilter');
@@ -590,5 +583,17 @@ export async function apply(ctx: Context, config: Config) {
         if (config.logMessageSendingSuccessStatusEnabled) logger.success(`${bot.user.name}: ${bot.selfId} 群组消息发送完成！`);
       }
     }
+  }
+
+  await showButton()
+
+  async function showButton() {
+    await sleep(3000)
+    notifier.update({type: 'primary'})
+    notifier.update(<>
+      <p>
+        <button onClick={sendNow}>立即发送</button>
+      </p>
+    </>)
   }
 }
