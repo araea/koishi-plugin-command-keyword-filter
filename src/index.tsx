@@ -156,18 +156,20 @@ export async function apply(ctx: Context, config: Config) {
       const [hours, minutes] = time.split(':').map(Number);
 
       const now = new Date();
-      const scheduledTime = new Date(now);
-      scheduledTime.setHours(hours, minutes, 0, 0);
+      const nowBeijing = new Date(now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }));
+      const scheduledTimeBeijing = new Date(nowBeijing);
+      scheduledTimeBeijing.setHours(hours, minutes, 0, 0);
 
-      if (scheduledTime <= now) {
-        scheduledTime.setDate(scheduledTime.getDate() + 1);
+      if (scheduledTimeBeijing <= nowBeijing) {
+        scheduledTimeBeijing.setDate(scheduledTimeBeijing.getDate() + 1);
       }
 
-      const timeDiff = scheduledTime.getTime() - now.getTime();
+      const timeDiff = scheduledTimeBeijing.getTime() - nowBeijing.getTime();
 
       const timer = setTimeout(() => {
         sendMessageToFriendsAndGroups();
       }, timeDiff);
+
 
       timers.push(timer);
 
