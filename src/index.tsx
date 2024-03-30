@@ -101,7 +101,7 @@ export const Config: Schema<Config> = Schema.intersect([
       pushMessagesToAllGroupsEnabled: Schema.boolean().default(false).description('是否启用向所有群组推送消息功能。'),
       sendToBothFriendAndGroupSimultaneously: Schema.boolean().default(false).description('是否同时向好友和群组发送消息（在同时开启为好友和群组发送消息时），关闭后，将会先发送给好友，再发送给群组。'),
       messagesToBeSent: Schema.array(String).role('table').description('要发送的消息列表，由于该配置项输入的文本无法直接换行，请使用 \\n 作为换行符，例如 你\\n好。发送图片请使用《发送图片xxxx》，这里的 xxxx 可以是文件路径（绝对路径），也可以是图片 URL。举例：你\\n好\\n《发送图片C:\\Pictures\\Nawyjx.jpg》'),
-      dailyScheduledTimers: Schema.array(String).role('table').description('每日定时发送消息的时间列表，例如 08:00、18:45。'),
+      dailyScheduledTimers: Schema.array(String).role('table').description('每日定时发送消息的时间列表（北京时间），例如 08:00、18:45。'),
       messageInterval: Schema.number().default(10).description('消息发送间隔（秒）。'),
       skipMessageRecipients: Schema.array(String).role('table').description('要跳过的消息接收者列表，即白名单。'),
       imageConversionEnabled: Schema.boolean().default(false).description('是否启用将消息转换成图片的功能，如需启用，需要启用 \`markdownToImage\` 服务。'),
