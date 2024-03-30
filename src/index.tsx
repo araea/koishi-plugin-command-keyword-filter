@@ -204,7 +204,6 @@ export async function apply(ctx: Context, config: Config) {
   // qxfzy*
   ctx.on('dispose', () => {
     isOver = true;
-    console.log('isOver', isOver)
     botSessions = {};
     timers.forEach((timer) => {
       clearTimeout(timer);
