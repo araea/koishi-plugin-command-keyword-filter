@@ -5,6 +5,7 @@ import {} from '@koishijs/plugin-help'
 import {} from '@koishijs/plugin-notifier'
 import path from "node:path";
 import * as fs from "fs";
+import {before} from "node:test";
 
 export const name = 'command-keyword-filter'
 export const inject = {
@@ -106,7 +107,7 @@ export const Config: Schema<Config> = Schema.intersect([
       skipMessageRecipients: Schema.array(String).role('table').description('要跳过的消息接收者列表，即白名单。'),
       imageConversionEnabled: Schema.boolean().default(false).description('是否启用将消息转换成图片的功能，如需启用，需要启用 \`markdownToImage\` 服务。'),
       imageType: Schema.union(['png', 'jpeg', 'webp']).default('jpeg').description(`发送的图片类型。`),
-      mergeForwardedChatHistoryEnabled: Schema.boolean().default(false).description('是否启用合并转发聊天记录功能（可能无效）。'),
+      mergeForwardedChatHistoryEnabled: Schema.boolean().default(false).description('是否启用合并转发聊天记录功能（可能无效，发送消息前必须保证 Bot 接受过至少一条消息）。'),
       logMessageSendingSuccessStatusEnabled: Schema.boolean().default(true).description('是否启用消息发送成功状态的记录功能。'),
       logMessageSendingFailStatusEnabled: Schema.boolean().default(true).description('是否启用消息发送失败状态的记录功能（可能无效）。'),
       retractDelay: Schema.number().min(0).default(0).description(`自动撤回等待的时间，单位是秒。值为 0 时不启用自动撤回功能（请注意 QQ 的两分钟撤回限制）。`),
@@ -131,15 +132,42 @@ export interface CommandKeywordFilter {
   username: string
 }
 
+// jk*
+interface BotSessions {
+  [botId: string]: any;
+}
+
 export async function apply(ctx: Context, config: Config) {
+  // bl*
+  let botSessions: BotSessions = {};
+  let isOver = false;
+  // cl*
+  const logger = ctx.logger('commandKeywordFilter');
+  const timers: NodeJS.Timeout[] = [];
   // an*
   const notifier = ctx.notifier.create();
+  const setOver = () => {
+    isOver = true
+    notifier.update({type: 'success', content: '正在停止中，请稍候...'})
+  }
   const sendNow = async () => {
-    notifier.update({type: 'success', content: '正在发送中...'})
+    isOver = false
+    notifier.update({type: 'success'})
+    notifier.update(<>
+      <p>正在发送中...</p>
+      <p>
+        <button onClick={setOver}>停止发送</button>
+      </p>
+    </>)
     await sendMessageToFriendsAndGroups()
-    notifier.update({type: 'success', content: '发送成功！'})
+    if (isOver) {
+      notifier.update({type: 'success', content: '已停止发送！正在初始化中，请稍候...'})
+    } else {
+      notifier.update({type: 'success', content: '所有消息已发送完成！正在初始化中，请稍候...'})
+    }
     await sleep(3000)
     notifier.update({type: 'primary'})
+    isOver = false
     notifier.update(<>
       <p>
         <button onClick={sendNow}>立即发送</button>
@@ -147,16 +175,12 @@ export async function apply(ctx: Context, config: Config) {
     </>)
   }
 
-  //cl*
-  const logger = ctx.logger('commandKeywordFilter');
-  const timers: NodeJS.Timeout[] = [];
-
   if (config.dailyScheduledTimers && config.dailyScheduledTimers.length !== 0) {
     config.dailyScheduledTimers.forEach((time) => {
       const [hours, minutes] = time.split(':').map(Number);
 
       const now = new Date();
-      const nowBeijing = new Date(now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }));
+      const nowBeijing = new Date(now.toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'}));
       const scheduledTimeBeijing = new Date(nowBeijing);
       scheduledTimeBeijing.setHours(hours, minutes, 0, 0);
 
@@ -179,10 +203,13 @@ export async function apply(ctx: Context, config: Config) {
 
   // qxfzy*
   ctx.on('dispose', () => {
+    isOver = true;
+    console.log('isOver', isOver)
+    botSessions = {};
     timers.forEach((timer) => {
       clearTimeout(timer);
-      ctx.scope.dispose();
     });
+    ctx.scope.dispose();
   })
 
   const {
@@ -238,7 +265,7 @@ export async function apply(ctx: Context, config: Config) {
       container.delete(userId);
       return await sendMessage(session, forgiveMessage)
     });
-  // zjj
+  // zjj*
   ctx.middleware(async (session, next) => {
     if (!isMentioned) {
       return next()
@@ -277,6 +304,7 @@ export async function apply(ctx: Context, config: Config) {
 
   // jtq* jt*
   ctx.on('message', async (session) => {
+    addBotSession(session)
     if (config.mysteriousFeatureToggle && config.shouldSendRequestOnUserSpeech && config.listUid !== '' && config.apiToken !== '') {
       await processPostRequest(session)
     }
@@ -334,6 +362,15 @@ export async function apply(ctx: Context, config: Config) {
   });
 
   // hs*
+  function addBotSession(session: any) {
+    if (botSessions[session.bot.selfId]) {
+      // logger.error(`BotId ${session.bot.selfId} 已经存在，不需要添加重复的元素。`);
+    } else {
+      botSessions[session.bot.selfId] = session;
+      // logger.success(`已成功添加 BotId ${session.bot.selfId}。`);
+    }
+  }
+
   function replaceImageSource(message: string): string {
     const regex = /《发送图片(.*?)》/g;
     return message.replace(regex, (match, imageUrl) => {
@@ -402,7 +439,7 @@ export async function apply(ctx: Context, config: Config) {
       const imageBuffer = await ctx.markdownToImage.convertToImage(modifiedMessage);
       [messageId] = await bot.sendPrivateMessage(userId, h.image(imageBuffer, `image/${config.imageType}`));
     } else if (config.mergeForwardedChatHistoryEnabled) {
-      const result = await bot.session.onebot.send_private_forward_msg(userId, [
+      const result = await botSessions[bot.selfId].onebot.send_private_forward_msg(userId, [
         {
           "type": "node",
           "data": {
@@ -445,7 +482,7 @@ export async function apply(ctx: Context, config: Config) {
       const imageBuffer = await ctx.markdownToImage.convertToImage(modifiedMessage);
       [messageId] = await bot.sendMessage(groupId, h.image(imageBuffer, `image/${config.imageType}`));
     } else if (config.mergeForwardedChatHistoryEnabled) {
-      const result = await bot.session.onebot.sendGroupForwardMsg(groupId, [
+      const result = await botSessions[bot.selfId].onebot.sendGroupForwardMsg(groupId, [
         {
           "type": "node",
           "data": {
@@ -528,6 +565,7 @@ export async function apply(ctx: Context, config: Config) {
   }
 
   async function sendMessageToFriendsAndGroups() {
+    isOver = false
     if (config.sendToBothFriendAndGroupSimultaneously) {
       await Promise.all([
         sendMessageToFriends(),
@@ -545,6 +583,7 @@ export async function apply(ctx: Context, config: Config) {
         const friendList = await bot.getFriendList();
         const friends = friendList.data;
         for (let i = 0; i < friends.length; i++) {
+          if (isOver) break
           if (config.skipMessageRecipients.includes(friends[i].id)) continue;
           const message = replaceImageSource(replaceNewline(config.messagesToBeSent));
           try {
@@ -555,8 +594,9 @@ export async function apply(ctx: Context, config: Config) {
           }
           await sleep(config.messageInterval * 1000);
         }
-
-        if (config.logMessageSendingSuccessStatusEnabled) logger.success(`${bot.user.name}: ${bot.selfId} 好友消息发送完成！`);
+        if (isOver) {
+          logger.success(`${bot.user.name}: ${bot.selfId} 已经停止发送好友消息！`);
+        } else if (config.logMessageSendingSuccessStatusEnabled) logger.success(`${bot.user.name}: ${bot.selfId} 好友消息发送完成！`);
       }
     }
 
@@ -569,7 +609,7 @@ export async function apply(ctx: Context, config: Config) {
         const groups = groupList.data;
 
         for (let i = 0; i < groups.length; i++) {
-
+          if (isOver) break
           if (config.skipMessageRecipients.includes(groups[i].id)) continue;
           const message = replaceImageSource(replaceNewline(config.messagesToBeSent));
           try {
@@ -581,8 +621,9 @@ export async function apply(ctx: Context, config: Config) {
           await sleep(config.messageInterval * 1000);
 
         }
-
-        if (config.logMessageSendingSuccessStatusEnabled) logger.success(`${bot.user.name}: ${bot.selfId} 群组消息发送完成！`);
+        if (isOver) {
+          logger.success(`${bot.user.name}: ${bot.selfId} 已经停止发送群组消息！`);
+        } else if (config.logMessageSendingSuccessStatusEnabled) logger.success(`${bot.user.name}: ${bot.selfId} 群组消息发送完成！`);
       }
     }
   }
