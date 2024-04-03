@@ -418,7 +418,7 @@ export async function apply(ctx: Context, config: Config) {
       [messageId] = await session.send(message);
     }
 
-    if (config.retractDelay === 0) return;
+    if (config.retractDelay === 0 || config.retractDelay === undefined) return;
     sentMessages.push(messageId);
 
     if (sentMessages.length >= 1) {
@@ -460,7 +460,7 @@ export async function apply(ctx: Context, config: Config) {
       [messageId] = await bot.sendPrivateMessage(userId, message);
     }
 
-    if (config.retractDelay === 0) return;
+    if (config.retractDelay === 0 || config.retractDelay === undefined) return;
     sentPrivateMessages.push(messageId);
 
     if (sentPrivateMessages.length >= 1) {
@@ -503,7 +503,7 @@ export async function apply(ctx: Context, config: Config) {
       [messageId] = await bot.sendMessage(groupId, message);
     }
 
-    if (config.retractDelay === 0) return;
+    if (config.retractDelay === 0 || config.retractDelay === undefined) return;
     sentGroupMessages.push(messageId);
 
     if (sentGroupMessages.length >= 1) {
