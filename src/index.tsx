@@ -340,7 +340,8 @@ export async function apply(ctx: Context, config: Config) {
         if (action === '仅封印无提示') {
           return '';
         }
-        return await sendMessage(argv.session, bannedMessage.replace('《剩余时间》', `${Math.floor(timeLimit - diff)}`));
+        await sendMessage(argv.session, bannedMessage.replace('《剩余时间》', `${Math.floor(timeLimit - diff)}`))
+        return '';
       } else {
         container.delete(argv.session.userId);
       }
@@ -351,12 +352,14 @@ export async function apply(ctx: Context, config: Config) {
         await processPostRequest(argv.session)
       }
       if (action === '仅提示') {
-        return await sendMessage(argv.session, reminderMessage)
+        await sendMessage(argv.session, reminderMessage)
+        return ''
       }
 
       container.set(argv.session.userId, now);
 
-      return await sendMessage(argv.session, triggerMessage)
+      await sendMessage(argv.session, triggerMessage)
+      return ''
     }
   });
 
